@@ -35,6 +35,10 @@ pub fn build(b: *std.Build) void {
         .target = target,
         .optimize = optimize,
     });
+    const libx264_dep = b.dependency("libx264", .{
+        .target = target,
+        .optimize = optimize,
+    });
 
     const lib = b.addStaticLibrary(.{
         .name = "ffmpeg",
@@ -48,7 +52,9 @@ pub fn build(b: *std.Build) void {
     lib.linkLibrary(libmp3lame_dep.artifact("mp3lame"));
     lib.linkLibrary(libvorbis_dep.artifact("vorbis"));
     lib.linkLibrary(libogg_dep.artifact("ogg"));
+    lib.linkLibrary(libx264_dep.artifact("x264"));
     lib.linkLibC();
+    lib.addIncludePath(libx264_dep.path(""));
     lib.addIncludePath(b.path("."));
 
     const avconfig_h = b.addConfigHeader(.{
@@ -540,7 +546,7 @@ pub fn build(b: *std.Build) void {
         .CONFIG_LIBDVDREAD = false,
         .CONFIG_LIBRUBBERBAND = false,
         .CONFIG_LIBVIDSTAB = false,
-        .CONFIG_LIBX264 = false,
+        .CONFIG_LIBX264 = true,
         .CONFIG_LIBX265 = false,
         .CONFIG_LIBXAVS = false,
         .CONFIG_LIBXAVS2 = false,
@@ -793,7 +799,7 @@ pub fn build(b: *std.Build) void {
         .CONFIG_JPEGTABLES = true,
         .CONFIG_LGPLV3 = false,
         .CONFIG_LIBX262 = false,
-        .CONFIG_LIBX264_HDR10 = false,
+        .CONFIG_LIBX264_HDR10 = true,
         .CONFIG_LLAUDDSP = true,
         .CONFIG_LLVIDDSP = true,
         .CONFIG_LLVIDENCDSP = true,
@@ -1716,8 +1722,8 @@ pub fn build(b: *std.Build) void {
         .CONFIG_LIBWEBP_ANIM_ENCODER = false,
         .CONFIG_LIBWEBP_ENCODER = false,
         .CONFIG_LIBX262_ENCODER = false,
-        .CONFIG_LIBX264_ENCODER = false,
-        .CONFIG_LIBX264RGB_ENCODER = false,
+        .CONFIG_LIBX264_ENCODER = true,
+        .CONFIG_LIBX264RGB_ENCODER = true,
         .CONFIG_LIBX265_ENCODER = false,
         .CONFIG_LIBXEVE_ENCODER = false,
         .CONFIG_LIBXAVS_ENCODER = false,
@@ -4295,7 +4301,7 @@ const all_sources = [_][]const u8{
     //"libavcodec/libwebpenc.c",
     //"libavcodec/libwebpenc_animencoder.c",
     //"libavcodec/libwebpenc_common.c",
-    //"libavcodec/libx264.c",
+    "libavcodec/libx264.c",
     //"libavcodec/libx265.c",
     //"libavcodec/libxavs.c",
     //"libavcodec/libxavs2.c",

@@ -44,6 +44,10 @@
             .url = "https://github.com/allyourcodebase/nasm/archive/c153aec97cfe50a4600d9cf3d5f703d58f9ccd56.tar.gz",
             .hash = "nasm-2.16.1-4-J30EdyVnXADate9iz7jWR4Q9tL1jU9S2Lw7PGgfOjP0v",
         },
+        .libx264 = .{
+            .url = "git+https://github.com/seatedro/x264#ee9c450a10414dc2191036e0d69e832916cd49bd",
+            .hash = "x264-0.165.0-lJ1ErxOpVAD6wSXLl3Vgc3Z_o-KAaciEOX_3qiyNCyzM",
+        },
     },
     .paths = .{
         "COPYING.GPLv2",
