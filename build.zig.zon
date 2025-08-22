@@ -45,8 +45,12 @@
             .hash = "nasm-2.16.1-4-J30EdyVnXADate9iz7jWR4Q9tL1jU9S2Lw7PGgfOjP0v",
         },
         .libx264 = .{
-            .url = "git+https://github.com/seatedro/x264#ee9c450a10414dc2191036e0d69e832916cd49bd",
-            .hash = "x264-0.165.0-lJ1ErxOpVAD6wSXLl3Vgc3Z_o-KAaciEOX_3qiyNCyzM",
+            .url = "../../../x264",
+            .hash = "x264-0.165.0-lJ1Erw_cVACE_W84iuxxwraPmxWHmzA3Wpe7pF3w7tIg",
+        },
+        .libx265 = .{
+            .url = "../../../x265",
+            .hash = "x265-4.0.0-rbJQJNbEUgGy_jV8DjIW0v8un4H2T8DmEv0KUHAXcpL0",
         },
     },
     .paths = .{

@@ -39,6 +39,10 @@ pub fn build(b: *std.Build) void {
         .target = target,
         .optimize = optimize,
     });
+    const libx265_dep = b.dependency("libx265", .{
+        .target = target,
+        .optimize = optimize,
+    });
 
     const lib = b.addStaticLibrary(.{
         .name = "ffmpeg",
@@ -53,9 +57,21 @@ pub fn build(b: *std.Build) void {
     lib.linkLibrary(libvorbis_dep.artifact("vorbis"));
     lib.linkLibrary(libogg_dep.artifact("ogg"));
     lib.linkLibrary(libx264_dep.artifact("x264"));
+    lib.linkLibrary(libx265_dep.artifact("x265"));
     lib.linkLibC();
     lib.addIncludePath(libx264_dep.path(""));
+    lib.addIncludePath(libx265_dep.path("source"));
     lib.addIncludePath(b.path("."));
+
+    switch (t.os.tag) {
+        .macos => {
+            lib.linkFramework("CoreFoundation");
+            lib.linkFramework("CoreMedia");
+            lib.linkFramework("CoreVideo");
+            lib.linkFramework("VideoToolbox");
+        },
+        else => {},
+    }
 
     const avconfig_h = b.addConfigHeader(.{
         .style = .blank,
@@ -109,7 +125,7 @@ pub fn build(b: *std.Build) void {
         .HAVE_ARMV6T2 = have_arm_feat(t, .has_v6t2),
         .HAVE_ARMV8 = have_arm_feat(t, .has_v8),
         .HAVE_DOTPROD = have_arm_feat(t, .dotprod) or have_aarch64_feat(t, .dotprod),
-        .HAVE_I8MM = have_arm_feat(t, .i8mm) or have_aarch64_feat(t, .i8mm),
+        .HAVE_I8MM = false, // Temporarily disabled due to assembler issues
         .HAVE_NEON = have_arm_feat(t, .neon) or have_aarch64_feat(t, .neon),
         .HAVE_VFP = have_arm_feat(t, .vfp2),
         .HAVE_VFPV3 = have_arm_feat(t, .vfp3),
@@ -164,7 +180,7 @@ pub fn build(b: *std.Build) void {
         .HAVE_ARMV6T2_EXTERNAL = have_arm_feat(t, .has_v6t2),
         .HAVE_ARMV8_EXTERNAL = have_arm_feat(t, .has_v8),
         .HAVE_DOTPROD_EXTERNAL = have_arm_feat(t, .dotprod) or have_aarch64_feat(t, .dotprod),
-        .HAVE_I8MM_EXTERNAL = have_arm_feat(t, .i8mm) or have_aarch64_feat(t, .i8mm),
+        .HAVE_I8MM_EXTERNAL = false, // Temporarily disabled due to assembler issues
         .HAVE_NEON_EXTERNAL = have_arm_feat(t, .neon) or have_aarch64_feat(t, .neon),
         .HAVE_VFP_EXTERNAL = have_arm_feat(t, .vfp2),
         .HAVE_VFPV3_EXTERNAL = have_arm_feat(t, .vfp3),
@@ -219,7 +235,7 @@ pub fn build(b: *std.Build) void {
         .HAVE_ARMV6T2_INLINE = have_arm_feat(t, .has_v6t2),
         .HAVE_ARMV8_INLINE = have_arm_feat(t, .has_v8),
         .HAVE_DOTPROD_INLINE = have_arm_feat(t, .dotprod) or have_aarch64_feat(t, .dotprod),
-        .HAVE_I8MM_INLINE = have_arm_feat(t, .i8mm) or have_aarch64_feat(t, .i8mm),
+        .HAVE_I8MM_INLINE = false, // Temporarily disabled due to assembler issues
         .HAVE_NEON_INLINE = have_arm_feat(t, .neon) or have_aarch64_feat(t, .neon),
         .HAVE_VFP_INLINE = have_arm_feat(t, .vfp2),
         .HAVE_VFPV3_INLINE = have_arm_feat(t, .vfp3),
@@ -405,11 +421,11 @@ pub fn build(b: *std.Build) void {
         .HAVE_NANOSLEEP = true,
         .HAVE_PEEKNAMEDPIPE = false,
         .HAVE_POSIX_MEMALIGN = true,
-        .HAVE_PRCTL = true,
+        .HAVE_PRCTL = t.os.tag == .linux,
         .HAVE_PTHREAD_CANCEL = true,
         .HAVE_PTHREAD_SET_NAME_NP = false,
         .HAVE_PTHREAD_SETNAME_NP = false,
-        .HAVE_SCHED_GETAFFINITY = true,
+        .HAVE_SCHED_GETAFFINITY = t.os.tag == .linux,
         .HAVE_SECITEMIMPORT = false,
         .HAVE_SETCONSOLETEXTATTRIBUTE = false,
         .HAVE_SETCONSOLECTRLHANDLER = false,
@@ -459,10 +475,10 @@ pub fn build(b: *std.Build) void {
         .HAVE_XMM_CLOBBERS = true,
         .HAVE_DPI_AWARENESS_CONTEXT = false,
         .HAVE_IDXGIOUTPUT5 = false,
-        .HAVE_KCMVIDEOCODECTYPE_HEVC = false,
-        .HAVE_KCMVIDEOCODECTYPE_HEVCWITHALPHA = false,
-        .HAVE_KCMVIDEOCODECTYPE_VP9 = false,
-        .HAVE_KCVPIXELFORMATTYPE_420YPCBCR10BIPLANARVIDEORANGE = false,
+        .HAVE_KCMVIDEOCODECTYPE_HEVC = t.os.tag == .macos,
+        .HAVE_KCMVIDEOCODECTYPE_HEVCWITHALPHA = t.os.tag == .macos,
+        .HAVE_KCMVIDEOCODECTYPE_VP9 = t.os.tag == .macos,
+        .HAVE_KCVPIXELFORMATTYPE_420YPCBCR10BIPLANARVIDEORANGE = t.os.tag == .macos,
         .HAVE_KCVPIXELFORMATTYPE_422YPCBCR8BIPLANARVIDEORANGE = false,
         .HAVE_KCVPIXELFORMATTYPE_422YPCBCR10BIPLANARVIDEORANGE = false,
         .HAVE_KCVPIXELFORMATTYPE_422YPCBCR16BIPLANARVIDEORANGE = false,
@@ -547,7 +563,7 @@ pub fn build(b: *std.Build) void {
         .CONFIG_LIBRUBBERBAND = false,
         .CONFIG_LIBVIDSTAB = false,
         .CONFIG_LIBX264 = true,
-        .CONFIG_LIBX265 = false,
+        .CONFIG_LIBX265 = true,
         .CONFIG_LIBXAVS = false,
         .CONFIG_LIBXAVS2 = false,
         .CONFIG_LIBXVID = false,
@@ -684,7 +700,7 @@ pub fn build(b: *std.Build) void {
         .CONFIG_NVENC = false,
         .CONFIG_VAAPI = false,
         .CONFIG_VDPAU = false,
-        .CONFIG_VIDEOTOOLBOX = false,
+        .CONFIG_VIDEOTOOLBOX = t.os.tag == .macos,
         .CONFIG_VULKAN = false,
         .CONFIG_V4L2_M2M = t.os.tag == .linux,
         .CONFIG_FTRAPV = false,
@@ -1020,9 +1036,9 @@ pub fn build(b: *std.Build) void {
         .CONFIG_H263_DECODER = true,
         .CONFIG_H263I_DECODER = true,
         .CONFIG_H263P_DECODER = true,
-        .CONFIG_H263_V4L2M2M_DECODER = true,
+        .CONFIG_H263_V4L2M2M_DECODER = t.os.tag == .linux,
         .CONFIG_H264_DECODER = true,
-        .CONFIG_H264_V4L2M2M_DECODER = true,
+        .CONFIG_H264_V4L2M2M_DECODER = t.os.tag == .linux,
         .CONFIG_H264_MEDIACODEC_DECODER = false,
         .CONFIG_H264_MMAL_DECODER = false,
         .CONFIG_H264_QSV_DECODER = false,
@@ -1031,7 +1047,7 @@ pub fn build(b: *std.Build) void {
         .CONFIG_HEVC_DECODER = true,
         .CONFIG_HEVC_QSV_DECODER = false,
         .CONFIG_HEVC_RKMPP_DECODER = false,
-        .CONFIG_HEVC_V4L2M2M_DECODER = true,
+        .CONFIG_HEVC_V4L2M2M_DECODER = t.os.tag == .linux,
         .CONFIG_HNM4_VIDEO_DECODER = true,
         .CONFIG_HQ_HQA_DECODER = true,
         .CONFIG_HQX_DECODER = true,
@@ -1069,12 +1085,12 @@ pub fn build(b: *std.Build) void {
         .CONFIG_MPEG1VIDEO_DECODER = true,
         .CONFIG_MPEG2VIDEO_DECODER = true,
         .CONFIG_MPEG4_DECODER = true,
-        .CONFIG_MPEG4_V4L2M2M_DECODER = true,
+        .CONFIG_MPEG4_V4L2M2M_DECODER = t.os.tag == .linux,
         .CONFIG_MPEG4_MMAL_DECODER = false,
         .CONFIG_MPEGVIDEO_DECODER = true,
-        .CONFIG_MPEG1_V4L2M2M_DECODER = true,
+        .CONFIG_MPEG1_V4L2M2M_DECODER = t.os.tag == .linux,
         .CONFIG_MPEG2_MMAL_DECODER = false,
-        .CONFIG_MPEG2_V4L2M2M_DECODER = true,
+        .CONFIG_MPEG2_V4L2M2M_DECODER = t.os.tag == .linux,
         .CONFIG_MPEG2_QSV_DECODER = false,
         .CONFIG_MPEG2_MEDIACODEC_DECODER = false,
         .CONFIG_MSA1_DECODER = true,
@@ -1183,7 +1199,7 @@ pub fn build(b: *std.Build) void {
         .CONFIG_VC1IMAGE_DECODER = true,
         .CONFIG_VC1_MMAL_DECODER = false,
         .CONFIG_VC1_QSV_DECODER = false,
-        .CONFIG_VC1_V4L2M2M_DECODER = true,
+        .CONFIG_VC1_V4L2M2M_DECODER = t.os.tag == .linux,
         .CONFIG_VCR1_DECODER = true,
         .CONFIG_VMDVIDEO_DECODER = true,
         .CONFIG_VMIX_DECODER = true,
@@ -1197,10 +1213,10 @@ pub fn build(b: *std.Build) void {
         .CONFIG_VP7_DECODER = true,
         .CONFIG_VP8_DECODER = true,
         .CONFIG_VP8_RKMPP_DECODER = false,
-        .CONFIG_VP8_V4L2M2M_DECODER = true,
+        .CONFIG_VP8_V4L2M2M_DECODER = t.os.tag == .linux,
         .CONFIG_VP9_DECODER = true,
         .CONFIG_VP9_RKMPP_DECODER = false,
-        .CONFIG_VP9_V4L2M2M_DECODER = true,
+        .CONFIG_VP9_V4L2M2M_DECODER = t.os.tag == .linux,
         .CONFIG_VQA_DECODER = true,
         .CONFIG_VQC_DECODER = true,
         .CONFIG_VVC_DECODER = true,
@@ -1731,7 +1747,7 @@ pub fn build(b: *std.Build) void {
         .CONFIG_LIBXVID_ENCODER = false,
         .CONFIG_AAC_MF_ENCODER = false,
         .CONFIG_AC3_MF_ENCODER = false,
-        .CONFIG_H263_V4L2M2M_ENCODER = true,
+        .CONFIG_H263_V4L2M2M_ENCODER = t.os.tag == .linux,
         .CONFIG_AV1_MEDIACODEC_ENCODER = false,
         .CONFIG_AV1_NVENC_ENCODER = false,
         .CONFIG_AV1_QSV_ENCODER = false,
@@ -1743,17 +1759,17 @@ pub fn build(b: *std.Build) void {
         .CONFIG_H264_NVENC_ENCODER = false,
         .CONFIG_H264_OMX_ENCODER = false,
         .CONFIG_H264_QSV_ENCODER = false,
-        .CONFIG_H264_V4L2M2M_ENCODER = true,
+        .CONFIG_H264_V4L2M2M_ENCODER = t.os.tag == .linux,
         .CONFIG_H264_VAAPI_ENCODER = false,
-        .CONFIG_H264_VIDEOTOOLBOX_ENCODER = false,
+        .CONFIG_H264_VIDEOTOOLBOX_ENCODER = t.os.tag == .macos,
         .CONFIG_HEVC_AMF_ENCODER = false,
         .CONFIG_HEVC_MEDIACODEC_ENCODER = false,
         .CONFIG_HEVC_MF_ENCODER = false,
         .CONFIG_HEVC_NVENC_ENCODER = false,
         .CONFIG_HEVC_QSV_ENCODER = false,
-        .CONFIG_HEVC_V4L2M2M_ENCODER = true,
+        .CONFIG_HEVC_V4L2M2M_ENCODER = t.os.tag == .linux,
         .CONFIG_HEVC_VAAPI_ENCODER = false,
-        .CONFIG_HEVC_VIDEOTOOLBOX_ENCODER = false,
+        .CONFIG_HEVC_VIDEOTOOLBOX_ENCODER = t.os.tag == .macos,
         .CONFIG_LIBKVAZAAR_ENCODER = false,
         .CONFIG_MJPEG_QSV_ENCODER = false,
         .CONFIG_MJPEG_VAAPI_ENCODER = false,
@@ -1762,10 +1778,10 @@ pub fn build(b: *std.Build) void {
         .CONFIG_MPEG2_VAAPI_ENCODER = false,
         .CONFIG_MPEG4_MEDIACODEC_ENCODER = false,
         .CONFIG_MPEG4_OMX_ENCODER = false,
-        .CONFIG_MPEG4_V4L2M2M_ENCODER = true,
+        .CONFIG_MPEG4_V4L2M2M_ENCODER = t.os.tag == .linux,
         .CONFIG_PRORES_VIDEOTOOLBOX_ENCODER = false,
         .CONFIG_VP8_MEDIACODEC_ENCODER = false,
-        .CONFIG_VP8_V4L2M2M_ENCODER = true,
+        .CONFIG_VP8_V4L2M2M_ENCODER = t.os.tag == .linux,
         .CONFIG_VP8_VAAPI_ENCODER = false,
         .CONFIG_VP9_MEDIACODEC_ENCODER = false,
         .CONFIG_VP9_VAAPI_ENCODER = false,
@@ -1781,7 +1797,7 @@ pub fn build(b: *std.Build) void {
         .CONFIG_AV1_VDPAU_HWACCEL = false,
         .CONFIG_AV1_VULKAN_HWACCEL = false,
         .CONFIG_H263_VAAPI_HWACCEL = false,
-        .CONFIG_H263_VIDEOTOOLBOX_HWACCEL = false,
+        .CONFIG_H263_VIDEOTOOLBOX_HWACCEL = t.os.tag == .macos,
         .CONFIG_H264_D3D11VA_HWACCEL = false,
         .CONFIG_H264_D3D11VA2_HWACCEL = false,
         .CONFIG_H264_D3D12VA_HWACCEL = false,
@@ -1789,7 +1805,7 @@ pub fn build(b: *std.Build) void {
         .CONFIG_H264_NVDEC_HWACCEL = false,
         .CONFIG_H264_VAAPI_HWACCEL = false,
         .CONFIG_H264_VDPAU_HWACCEL = false,
-        .CONFIG_H264_VIDEOTOOLBOX_HWACCEL = false,
+        .CONFIG_H264_VIDEOTOOLBOX_HWACCEL = t.os.tag == .macos,
         .CONFIG_H264_VULKAN_HWACCEL = false,
         .CONFIG_HEVC_D3D11VA_HWACCEL = false,
         .CONFIG_HEVC_D3D11VA2_HWACCEL = false,
@@ -1798,13 +1814,13 @@ pub fn build(b: *std.Build) void {
         .CONFIG_HEVC_NVDEC_HWACCEL = false,
         .CONFIG_HEVC_VAAPI_HWACCEL = false,
         .CONFIG_HEVC_VDPAU_HWACCEL = false,
-        .CONFIG_HEVC_VIDEOTOOLBOX_HWACCEL = false,
+        .CONFIG_HEVC_VIDEOTOOLBOX_HWACCEL = t.os.tag == .macos,
         .CONFIG_HEVC_VULKAN_HWACCEL = false,
         .CONFIG_MJPEG_NVDEC_HWACCEL = false,
         .CONFIG_MJPEG_VAAPI_HWACCEL = false,
         .CONFIG_MPEG1_NVDEC_HWACCEL = false,
         .CONFIG_MPEG1_VDPAU_HWACCEL = false,
-        .CONFIG_MPEG1_VIDEOTOOLBOX_HWACCEL = false,
+        .CONFIG_MPEG1_VIDEOTOOLBOX_HWACCEL = t.os.tag == .macos,
         .CONFIG_MPEG2_D3D11VA_HWACCEL = false,
         .CONFIG_MPEG2_D3D11VA2_HWACCEL = false,
         .CONFIG_MPEG2_D3D12VA_HWACCEL = false,
@@ -1812,11 +1828,11 @@ pub fn build(b: *std.Build) void {
         .CONFIG_MPEG2_NVDEC_HWACCEL = false,
         .CONFIG_MPEG2_VAAPI_HWACCEL = false,
         .CONFIG_MPEG2_VDPAU_HWACCEL = false,
-        .CONFIG_MPEG2_VIDEOTOOLBOX_HWACCEL = false,
+        .CONFIG_MPEG2_VIDEOTOOLBOX_HWACCEL = t.os.tag == .macos,
         .CONFIG_MPEG4_NVDEC_HWACCEL = false,
         .CONFIG_MPEG4_VAAPI_HWACCEL = false,
         .CONFIG_MPEG4_VDPAU_HWACCEL = false,
-        .CONFIG_MPEG4_VIDEOTOOLBOX_HWACCEL = false,
+        .CONFIG_MPEG4_VIDEOTOOLBOX_HWACCEL = t.os.tag == .macos,
         .CONFIG_PRORES_VIDEOTOOLBOX_HWACCEL = false,
         .CONFIG_VC1_D3D11VA_HWACCEL = false,
         .CONFIG_VC1_D3D11VA2_HWACCEL = false,
@@ -1834,7 +1850,7 @@ pub fn build(b: *std.Build) void {
         .CONFIG_VP9_NVDEC_HWACCEL = false,
         .CONFIG_VP9_VAAPI_HWACCEL = false,
         .CONFIG_VP9_VDPAU_HWACCEL = false,
-        .CONFIG_VP9_VIDEOTOOLBOX_HWACCEL = false,
+        .CONFIG_VP9_VIDEOTOOLBOX_HWACCEL = t.os.tag == .macos,
         .CONFIG_WMV3_D3D11VA_HWACCEL = false,
         .CONFIG_WMV3_D3D11VA2_HWACCEL = false,
         .CONFIG_WMV3_D3D12VA_HWACCEL = false,
@@ -3234,6 +3250,9 @@ fn categorizeSources(ally: std.mem.Allocator, target: std.Target, tls: Tls) Cate
         } else if (std.mem.startsWith(u8, prefixed_path, "/W/")) p: {
             if (target.os.tag != .windows) continue;
             break :p prefixed_path["/W/".len..];
+        } else if (std.mem.startsWith(u8, prefixed_path, "/D/")) p: {
+            if (target.os.tag != .macos) continue;
+            break :p prefixed_path["/D/".len..];
         } else prefixed_path;
 
         const lib = for (&libs) |*lib| {
@@ -4302,7 +4321,7 @@ const all_sources = [_][]const u8{
     //"libavcodec/libwebpenc_animencoder.c",
     //"libavcodec/libwebpenc_common.c",
     "libavcodec/libx264.c",
-    //"libavcodec/libx265.c",
+    "libavcodec/libx265.c",
     //"libavcodec/libxavs.c",
     //"libavcodec/libxavs2.c",
     //"libavcodec/libxevd.c",
@@ -4942,9 +4961,9 @@ const all_sources = [_][]const u8{
     //"libavcodec/vdpau_vp9.c",
     "libavcodec/version.c",
     "libavcodec/videodsp.c",
-    //"libavcodec/videotoolbox.c",
-    //"libavcodec/videotoolbox_vp9.c",
-    //"libavcodec/videotoolboxenc.c",
+    "/D/libavcodec/videotoolbox.c",
+    "/D/libavcodec/videotoolbox_vp9.c",
+    "/D/libavcodec/videotoolboxenc.c",
     "libavcodec/vima.c",
     "libavcodec/vlc.c",
     "libavcodec/vmdaudio.c",
@@ -6510,7 +6529,7 @@ const all_sources = [_][]const u8{
     //"libavutil/hwcontext_stub.c",
     //"libavutil/hwcontext_vaapi.c",
     //"libavutil/hwcontext_vdpau.c",
-    //"libavutil/hwcontext_videotoolbox.c",
+    "libavutil/hwcontext_videotoolbox.c",
     //"libavutil/hwcontext_vulkan.c",
     "libavutil/iamf.c",
     "libavutil/imgutils.c",
