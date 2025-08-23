@@ -43,12 +43,50 @@ pub fn build(b: *std.Build) void {
         .target = target,
         .optimize = optimize,
     });
+    const nv_codec_headers_dep = b.dependency("nv-codec-headers", .{
+        .target = target,
+        .optimize = optimize,
+    });
 
     const lib = b.addStaticLibrary(.{
         .name = "ffmpeg",
         .target = target,
         .optimize = optimize,
     });
+
+    const w32dlfcn = b.addWriteFile("compat/w32dlfcn.h",
+        \\#ifndef COMPAT_W32DLFCN_H
+        \\#define COMPAT_W32DLFCN_H
+        \\
+        \\#ifndef _WIN32
+        \\#include <dlfcn.h>
+        \\#endif
+        \\
+        \\#endif /* COMPAT_W32DLFCN_H */
+    );
+
+    const cuda_dynlink = b.addWriteFile("compat/cuda/dynlink_loader.h",
+        \\#ifndef COMPAT_CUDA_DYNLINK_LOADER_H
+        \\#define COMPAT_CUDA_DYNLINK_LOADER_H
+        \\
+        \\#include "libavutil/log.h"
+        \\#ifndef _WIN32
+        \\#include <dlfcn.h>
+        \\#endif
+        \\
+        \\#define FFNV_LOAD_FUNC(path) dlopen((path), RTLD_LAZY)
+        \\#define FFNV_SYM_FUNC(lib, sym) dlsym((lib), (sym))
+        \\#define FFNV_FREE_FUNC(lib) dlclose(lib)
+        \\#define FFNV_LOG_FUNC(logctx, msg, ...) av_log(logctx, AV_LOG_ERROR, msg,  __VA_ARGS__)
+        \\#define FFNV_DEBUG_LOG_FUNC(logctx, msg, ...) av_log(logctx, AV_LOG_DEBUG, msg,  __VA_ARGS__)
+        \\
+        \\#include <ffnvcodec/dynlink_loader.h>
+        \\
+        \\#endif /* COMPAT_CUDA_DYNLINK_LOADER_H */
+    );
+
+    lib.addIncludePath(w32dlfcn.getDirectory());
+    lib.addIncludePath(cuda_dynlink.getDirectory());
     lib.linkLibrary(libz_dep.artifact("z"));
     if (lazy_mbedtls_dep) |mbedtls_dep| lib.linkLibrary(mbedtls_dep.artifact("mbedtls"));
     if (lazy_openssl_dep) |openssl_dep| lib.linkLibrary(openssl_dep.artifact("openssl"));
@@ -61,6 +99,7 @@ pub fn build(b: *std.Build) void {
     lib.linkLibC();
     lib.addIncludePath(libx264_dep.path(""));
     lib.addIncludePath(libx265_dep.path("source"));
+    lib.addIncludePath(nv_codec_headers_dep.path("include"));
     lib.addIncludePath(b.path("."));
 
     switch (t.os.tag) {
@@ -72,6 +111,12 @@ pub fn build(b: *std.Build) void {
         },
         .linux => {
             lib.linkSystemLibrary("va");
+            lib.linkSystemLibrary("cuda");
+            lib.linkSystemLibrary("cudart");
+        },
+        .windows => {
+            lib.linkSystemLibrary("cuda");
+            lib.linkSystemLibrary("cudart");
         },
         else => {},
     }
@@ -313,7 +358,7 @@ pub fn build(b: *std.Build) void {
         .HAVE_ASM_TYPES_H = true,
         .HAVE_CDIO_PARANOIA_H = false,
         .HAVE_CDIO_PARANOIA_PARANOIA_H = false,
-        .HAVE_CUDA_H = false,
+        .HAVE_CUDA_H = t.os.tag == .linux or t.os.tag == .windows,
         .HAVE_DISPATCH_DISPATCH_H = false,
         .HAVE_DEV_BKTR_IOCTL_BT848_H = false,
         .HAVE_DEV_BKTR_IOCTL_METEOR_H = false,
@@ -691,16 +736,16 @@ pub fn build(b: *std.Build) void {
         .CONFIG_OPENCL = false,
         .CONFIG_AMF = false,
         .CONFIG_AUDIOTOOLBOX = false,
-        .CONFIG_CUDA = false,
+        .CONFIG_CUDA = t.os.tag == .linux or t.os.tag == .windows,
         .CONFIG_CUDA_LLVM = true,
-        .CONFIG_CUVID = false,
+        .CONFIG_CUVID = t.os.tag == .linux or t.os.tag == .windows,
         .CONFIG_D3D11VA = false,
         .CONFIG_D3D12VA = false,
         .CONFIG_DXVA2 = false,
-        .CONFIG_FFNVCODEC = false,
+        .CONFIG_FFNVCODEC = t.os.tag == .linux or t.os.tag == .windows,
         .CONFIG_LIBDRM = false,
-        .CONFIG_NVDEC = false,
-        .CONFIG_NVENC = false,
+        .CONFIG_NVDEC = t.os.tag == .linux or t.os.tag == .windows,
+        .CONFIG_NVENC = t.os.tag == .linux or t.os.tag == .windows,
         .CONFIG_VAAPI = t.os.tag == .linux,
         .CONFIG_VDPAU = false,
         .CONFIG_VIDEOTOOLBOX = t.os.tag == .macos,
@@ -1752,14 +1797,14 @@ pub fn build(b: *std.Build) void {
         .CONFIG_AC3_MF_ENCODER = false,
         .CONFIG_H263_V4L2M2M_ENCODER = t.os.tag == .linux,
         .CONFIG_AV1_MEDIACODEC_ENCODER = false,
-        .CONFIG_AV1_NVENC_ENCODER = false,
+        .CONFIG_AV1_NVENC_ENCODER = t.os.tag == .linux or t.os.tag == .windows,
         .CONFIG_AV1_QSV_ENCODER = false,
         .CONFIG_AV1_AMF_ENCODER = false,
         .CONFIG_AV1_VAAPI_ENCODER = false,
         .CONFIG_LIBOPENH264_ENCODER = false,
         .CONFIG_H264_AMF_ENCODER = false,
         .CONFIG_H264_MF_ENCODER = false,
-        .CONFIG_H264_NVENC_ENCODER = false,
+        .CONFIG_H264_NVENC_ENCODER = t.os.tag == .linux or t.os.tag == .windows,
         .CONFIG_H264_OMX_ENCODER = false,
         .CONFIG_H264_QSV_ENCODER = false,
         .CONFIG_H264_V4L2M2M_ENCODER = t.os.tag == .linux,
@@ -1768,7 +1813,7 @@ pub fn build(b: *std.Build) void {
         .CONFIG_HEVC_AMF_ENCODER = false,
         .CONFIG_HEVC_MEDIACODEC_ENCODER = false,
         .CONFIG_HEVC_MF_ENCODER = false,
-        .CONFIG_HEVC_NVENC_ENCODER = false,
+        .CONFIG_HEVC_NVENC_ENCODER = t.os.tag == .linux or t.os.tag == .windows,
         .CONFIG_HEVC_QSV_ENCODER = false,
         .CONFIG_HEVC_V4L2M2M_ENCODER = t.os.tag == .linux,
         .CONFIG_HEVC_VAAPI_ENCODER = t.os.tag == .linux,
@@ -1805,7 +1850,7 @@ pub fn build(b: *std.Build) void {
         .CONFIG_H264_D3D11VA2_HWACCEL = false,
         .CONFIG_H264_D3D12VA_HWACCEL = false,
         .CONFIG_H264_DXVA2_HWACCEL = false,
-        .CONFIG_H264_NVDEC_HWACCEL = false,
+        .CONFIG_H264_NVDEC_HWACCEL = t.os.tag == .linux or t.os.tag == .windows,
         .CONFIG_H264_VAAPI_HWACCEL = t.os.tag == .linux,
         .CONFIG_H264_VDPAU_HWACCEL = false,
         .CONFIG_H264_VIDEOTOOLBOX_HWACCEL = t.os.tag == .macos,
@@ -1814,7 +1859,7 @@ pub fn build(b: *std.Build) void {
         .CONFIG_HEVC_D3D11VA2_HWACCEL = false,
         .CONFIG_HEVC_D3D12VA_HWACCEL = false,
         .CONFIG_HEVC_DXVA2_HWACCEL = false,
-        .CONFIG_HEVC_NVDEC_HWACCEL = false,
+        .CONFIG_HEVC_NVDEC_HWACCEL = t.os.tag == .linux or t.os.tag == .windows,
         .CONFIG_HEVC_VAAPI_HWACCEL = t.os.tag == .linux,
         .CONFIG_HEVC_VDPAU_HWACCEL = false,
         .CONFIG_HEVC_VIDEOTOOLBOX_HWACCEL = t.os.tag == .macos,
@@ -1828,11 +1873,11 @@ pub fn build(b: *std.Build) void {
         .CONFIG_MPEG2_D3D11VA2_HWACCEL = false,
         .CONFIG_MPEG2_D3D12VA_HWACCEL = false,
         .CONFIG_MPEG2_DXVA2_HWACCEL = false,
-        .CONFIG_MPEG2_NVDEC_HWACCEL = false,
+        .CONFIG_MPEG2_NVDEC_HWACCEL = t.os.tag == .linux or t.os.tag == .windows,
         .CONFIG_MPEG2_VAAPI_HWACCEL = t.os.tag == .linux,
         .CONFIG_MPEG2_VDPAU_HWACCEL = false,
         .CONFIG_MPEG2_VIDEOTOOLBOX_HWACCEL = t.os.tag == .macos,
-        .CONFIG_MPEG4_NVDEC_HWACCEL = false,
+        .CONFIG_MPEG4_NVDEC_HWACCEL = t.os.tag == .linux or t.os.tag == .windows,
         .CONFIG_MPEG4_VAAPI_HWACCEL = t.os.tag == .linux,
         .CONFIG_MPEG4_VDPAU_HWACCEL = false,
         .CONFIG_MPEG4_VIDEOTOOLBOX_HWACCEL = t.os.tag == .macos,
@@ -3204,6 +3249,9 @@ pub fn build(b: *std.Build) void {
         } else if (std.mem.startsWith(u8, h, "/D/")) p: {
             if (t.os.tag != .macos) continue;
             break :p h["/D/".len..];
+        } else if (std.mem.startsWith(u8, h, "/LW/")) p: {
+            if (t.os.tag != .linux and t.os.tag != .windows) continue;
+            break :p h["/LW/".len..];
         } else h;
         lib.installHeader(b.path(path), path);
     }
@@ -3268,6 +3316,9 @@ fn categorizeSources(ally: std.mem.Allocator, target: std.Target, tls: Tls) Cate
         } else if (std.mem.startsWith(u8, prefixed_path, "/D/")) p: {
             if (target.os.tag != .macos) continue;
             break :p prefixed_path["/D/".len..];
+        } else if (std.mem.startsWith(u8, prefixed_path, "/LW/")) p: {
+            if (target.os.tag != .linux and target.os.tag != .windows) continue;
+            break :p prefixed_path["/LW/".len..];
         } else prefixed_path;
 
         const lib = for (&libs) |*lib| {
@@ -3431,7 +3482,7 @@ const headers = [_][]const u8{
     "libavutil/hdr_dynamic_vivid_metadata.h",
     "libavutil/hmac.h",
     "libavutil/hwcontext.h",
-    "libavutil/hwcontext_cuda.h",
+    "/LW/libavutil/hwcontext_cuda.h",
     "libavutil/hwcontext_d3d11va.h",
     "libavutil/hwcontext_d3d12va.h",
     "libavutil/hwcontext_drm.h",
@@ -4602,20 +4653,20 @@ const all_sources = [_][]const u8{
     "libavcodec/notchlc.c",
     "libavcodec/null.c",
     "libavcodec/nuv.c",
-    //"libavcodec/nvdec.c",
-    //"libavcodec/nvdec_av1.c",
-    //"libavcodec/nvdec_h264.c",
-    //"libavcodec/nvdec_hevc.c",
-    //"libavcodec/nvdec_mjpeg.c",
-    //"libavcodec/nvdec_mpeg12.c",
-    //"libavcodec/nvdec_mpeg4.c",
-    //"libavcodec/nvdec_vc1.c",
-    //"libavcodec/nvdec_vp8.c",
-    //"libavcodec/nvdec_vp9.c",
-    //"libavcodec/nvenc.c",
-    //"libavcodec/nvenc_av1.c",
-    //"libavcodec/nvenc_h264.c",
-    //"libavcodec/nvenc_hevc.c",
+    "/LW/libavcodec/nvdec.c",
+    // "/LW/libavcodec/nvdec_av1.c",
+    "/LW/libavcodec/nvdec_h264.c",
+    "/LW/libavcodec/nvdec_hevc.c",
+    // "/LW/libavcodec/nvdec_mjpeg.c",
+    "/LW/libavcodec/nvdec_mpeg12.c",
+    "/LW/libavcodec/nvdec_mpeg4.c",
+    // "/LW/libavcodec/nvdec_vc1.c",
+    // "/LW/libavcodec/nvdec_vp8.c",
+    // "/LW/libavcodec/nvdec_vp9.c",
+    "/LW/libavcodec/nvenc.c",
+    "/LW/libavcodec/nvenc_av1.c",
+    "/LW/libavcodec/nvenc_h264.c",
+    "/LW/libavcodec/nvenc_hevc.c",
     //"libavcodec/omx.c",
     "libavcodec/on2avc.c",
     "libavcodec/on2avcdata.c",
@@ -6533,7 +6584,7 @@ const all_sources = [_][]const u8{
     "libavutil/hdr_dynamic_vivid_metadata.c",
     "libavutil/hmac.c",
     "libavutil/hwcontext.c",
-    //"libavutil/hwcontext_cuda.c",
+    "/LW/libavutil/hwcontext_cuda.c",
     //"libavutil/hwcontext_d3d11va.c",
     //"libavutil/hwcontext_d3d12va.c",
     //"libavutil/hwcontext_drm.c",

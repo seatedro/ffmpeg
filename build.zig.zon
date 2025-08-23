@@ -52,6 +52,9 @@
             .url = "git+https://github.com/seatedro/x265#1eae0fd61cb36217a5b9d6670929f4073b900aaa",
             .hash = "x265-4.1.0-rbJQJCPi1QAX1HD4dFNtC-qmXBZy815B-H0nd_uJ12ws",
         },
+        .@"nv-codec-headers" = .{
+            .path = "git+https://github.com/seatedro/nv-codec-headers#b24ba97a1009aabb851ee938a74cd87128fa50c9",
+        },
     },
     .paths = .{
         "COPYING.GPLv2",
