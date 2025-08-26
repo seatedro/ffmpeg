@@ -4,7 +4,7 @@ static const AVCodecParser * const parser_list[] = {
     &ff_ac3_parser,
     &ff_adx_parser,
     &ff_amr_parser,
-    &ff_av1_parser,
+    // &ff_av1_parser, //TODO(ro): av1
     &ff_avs2_parser,
     &ff_avs3_parser,
     &ff_bmp_parser,

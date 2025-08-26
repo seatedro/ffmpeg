@@ -36,7 +36,7 @@ static const FFInputFormat * const demuxer_list[] = {
     &ff_ass_demuxer,
     &ff_ast_demuxer,
     &ff_au_demuxer,
-    &ff_av1_demuxer,
+    // &ff_av1_demuxer, //TODO(ro): av1
     &ff_avi_demuxer,
     &ff_avr_demuxer,
     &ff_avs_demuxer,

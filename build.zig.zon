@@ -41,19 +41,20 @@
         // This is used to compile some assembly files into object files for x86.
         // Without this, ffmpeg considers the build "crippled".
         .nasm = .{
-            .url = "https://github.com/allyourcodebase/nasm/archive/c153aec97cfe50a4600d9cf3d5f703d58f9ccd56.tar.gz",
-            .hash = "nasm-2.16.1-4-J30EdyVnXADate9iz7jWR4Q9tL1jU9S2Lw7PGgfOjP0v",
+            .url = "git+https://github.com/seatedro/nasm#53313fab4cfe91de1aaf3df6fc2737719fdc919d",
+            .hash = "nasm-2.16.1-4-J30EdwGwXACgImX62KZXKQjImmWQkoxURNgnvUEivYWy",
         },
         .libx264 = .{
-            .url = "git+https://github.com/seatedro/x264#85c3354eab9799e47b6c59382252574178a20d3d",
-            .hash = "x264-0.165.0-lJ1Erw_cVACE_W84iuxxwraPmxWHmzA3Wpe7pF3w7tIg",
+            .url = "git+https://github.com/seatedro/x264#29e8470d405668c451a48a7cc7dddf2fa48404f8",
+            .hash = "x264-0.165.0-lJ1Er1_fVAAjTuLlZt21VlPjslhn68u3j7aIwO3kZaIK",
         },
         .libx265 = .{
-            .url = "git+https://github.com/seatedro/x265#1eae0fd61cb36217a5b9d6670929f4073b900aaa",
-            .hash = "x265-4.1.0-rbJQJCPi1QAX1HD4dFNtC-qmXBZy815B-H0nd_uJ12ws",
+            .url = "git+https://github.com/seatedro/x265#6db1b63e0de3bc50d56a71908c457135effeeb04",
+            .hash = "x265-4.1.0-rbJQJJzh1QB2jwWGUFpSAjqrALj-wDciA4HQgv913MGo",
         },
         .@"nv-codec-headers" = .{
-            .path = "git+https://github.com/seatedro/nv-codec-headers#b24ba97a1009aabb851ee938a74cd87128fa50c9",
+            .url = "git+https://github.com/seatedro/nv-codec-headers#b24ba97a1009aabb851ee938a74cd87128fa50c9",
+            .hash = "nv_codec_headers-12.2.72-S9hjiZX0BgArpfKE-_33nPH3CIv3VA4YZYmyQwFhttDI",
         },
     },
     .paths = .{

@@ -717,7 +717,7 @@ static const FFCodec * const codec_list[] = {
     &ff_bintext_decoder,
     &ff_xbin_decoder,
     &ff_idf_decoder,
-    &ff_av1_decoder,
+    // &ff_av1_decoder, //TODO(ro): av1
     &ff_vnull_decoder,
     &ff_anull_decoder,
     NULL };

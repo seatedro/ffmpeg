@@ -54,39 +54,6 @@ pub fn build(b: *std.Build) void {
         .optimize = optimize,
     });
 
-    const w32dlfcn = b.addWriteFile("compat/w32dlfcn.h",
-        \\#ifndef COMPAT_W32DLFCN_H
-        \\#define COMPAT_W32DLFCN_H
-        \\
-        \\#ifndef _WIN32
-        \\#include <dlfcn.h>
-        \\#endif
-        \\
-        \\#endif /* COMPAT_W32DLFCN_H */
-    );
-
-    const cuda_dynlink = b.addWriteFile("compat/cuda/dynlink_loader.h",
-        \\#ifndef COMPAT_CUDA_DYNLINK_LOADER_H
-        \\#define COMPAT_CUDA_DYNLINK_LOADER_H
-        \\
-        \\#include "libavutil/log.h"
-        \\#ifndef _WIN32
-        \\#include <dlfcn.h>
-        \\#endif
-        \\
-        \\#define FFNV_LOAD_FUNC(path) dlopen((path), RTLD_LAZY)
-        \\#define FFNV_SYM_FUNC(lib, sym) dlsym((lib), (sym))
-        \\#define FFNV_FREE_FUNC(lib) dlclose(lib)
-        \\#define FFNV_LOG_FUNC(logctx, msg, ...) av_log(logctx, AV_LOG_ERROR, msg,  __VA_ARGS__)
-        \\#define FFNV_DEBUG_LOG_FUNC(logctx, msg, ...) av_log(logctx, AV_LOG_DEBUG, msg,  __VA_ARGS__)
-        \\
-        \\#include <ffnvcodec/dynlink_loader.h>
-        \\
-        \\#endif /* COMPAT_CUDA_DYNLINK_LOADER_H */
-    );
-
-    lib.addIncludePath(w32dlfcn.getDirectory());
-    lib.addIncludePath(cuda_dynlink.getDirectory());
     lib.linkLibrary(libz_dep.artifact("z"));
     if (lazy_mbedtls_dep) |mbedtls_dep| lib.linkLibrary(mbedtls_dep.artifact("mbedtls"));
     if (lazy_openssl_dep) |openssl_dep| lib.linkLibrary(openssl_dep.artifact("openssl"));
@@ -101,6 +68,7 @@ pub fn build(b: *std.Build) void {
     lib.addIncludePath(libx265_dep.path("source"));
     lib.addIncludePath(nv_codec_headers_dep.path("include"));
     lib.addIncludePath(b.path("."));
+    lib.addIncludePath(b.path("compat"));
 
     switch (t.os.tag) {
         .macos => {
@@ -115,8 +83,8 @@ pub fn build(b: *std.Build) void {
             lib.linkSystemLibrary("cudart");
         },
         .windows => {
-            lib.linkSystemLibrary("cuda");
-            lib.linkSystemLibrary("cudart");
+            // nvenc uses dynamic loading on Windows, no need to link CUDA libraries
+            lib.linkSystemLibrary("ws2_32"); // Windows sockets
         },
         else => {},
     }
@@ -354,7 +322,7 @@ pub fn build(b: *std.Build) void {
         .HAVE_X86ASM = t.cpu.arch.isX86(),
         .HAVE_BIGENDIAN = t.cpu.arch.endian() == .big,
         .HAVE_FAST_UNALIGNED = fastUnalignedLoads(t),
-        .HAVE_ARPA_INET_H = true,
+        .HAVE_ARPA_INET_H = t.os.tag != .windows,
         .HAVE_ASM_TYPES_H = true,
         .HAVE_CDIO_PARANOIA_H = false,
         .HAVE_CDIO_PARANOIA_PARANOIA_H = false,
@@ -365,13 +333,14 @@ pub fn build(b: *std.Build) void {
         .HAVE_DEV_IC_BT8XX_H = false,
         .HAVE_DEV_VIDEO_BKTR_IOCTL_BT848_H = false,
         .HAVE_DEV_VIDEO_METEOR_IOCTL_METEOR_H = false,
-        .HAVE_DIRECT_H = false,
-        .HAVE_DIRENT_H = true,
+        .HAVE_DIRECT_H = t.os.tag == .windows,
+        .HAVE_DIRENT_H = t.os.tag != .windows,
+        .HAVE_DLFCN_H = t.os.tag != .windows,
         .HAVE_DXGIDEBUG_H = false,
-        .HAVE_DXVA_H = false,
+        .HAVE_DXVA_H = t.os.tag == .windows,
         .HAVE_ES2_GL_H = false,
         .HAVE_GSM_H = false,
-        .HAVE_IO_H = false,
+        .HAVE_IO_H = t.os.tag == .windows,
         .HAVE_LINUX_DMA_BUF_H = t.os.tag == .linux,
         .HAVE_LINUX_PERF_EVENT_H = t.os.tag == .linux,
         .HAVE_MACHINE_IOCTL_BT848_H = false,
@@ -379,18 +348,20 @@ pub fn build(b: *std.Build) void {
         .HAVE_MALLOC_H = t.os.tag == .linux,
         .HAVE_OPENCV2_CORE_CORE_C_H = false,
         .HAVE_OPENGL_GL3_H = false,
-        .HAVE_POLL_H = true,
+        .HAVE_GLOB_H = t.os.tag != .windows,
+        .HAVE_POLL_H = t.os.tag != .windows,
         .HAVE_PTHREAD_NP_H = false,
-        .HAVE_SYS_PARAM_H = true,
-        .HAVE_SYS_RESOURCE_H = true,
-        .HAVE_SYS_SELECT_H = true,
+        .HAVE_SYS_PARAM_H = t.os.tag != .windows,
+        .HAVE_SYS_RESOURCE_H = t.os.tag != .windows,
+        .HAVE_SYS_SELECT_H = t.os.tag != .windows,
         .HAVE_SYS_SOUNDCARD_H = t.os.tag == .linux,
-        .HAVE_SYS_TIME_H = true,
-        .HAVE_SYS_UN_H = true,
+        .HAVE_SYS_MMAN_H = t.os.tag != .windows,
+        .HAVE_SYS_TIME_H = t.os.tag != .windows,
+        .HAVE_SYS_UN_H = t.os.tag != .windows,
         .HAVE_SYS_VIDEOIO_H = false,
-        .HAVE_TERMIOS_H = true,
+        .HAVE_TERMIOS_H = t.os.tag != .windows,
         .HAVE_UDPLITE_H = false,
-        .HAVE_UNISTD_H = true,
+        .HAVE_UNISTD_H = t.os.tag != .windows,
         .HAVE_VALGRIND_VALGRIND_H = false,
         .HAVE_WINDOWS_H = t.os.tag == .windows,
         .HAVE_WINSOCK2_H = t.os.tag == .windows,
@@ -424,7 +395,7 @@ pub fn build(b: *std.Build) void {
         .HAVE_SINF = true,
         .HAVE_TRUNC = true,
         .HAVE_TRUNCF = true,
-        .HAVE_DOS_PATHS = false,
+        .HAVE_DOS_PATHS = t.os.tag == .windows,
         .HAVE_LIBC_MSVCRT = false,
         .HAVE_MMAL_PARAMETER_VIDEO_MAX_NUM_CALLBACKS = false,
         .HAVE_SECTION_DATA_REL_RO = t.os.tag == .linux,
@@ -432,18 +403,18 @@ pub fn build(b: *std.Build) void {
         .HAVE_UWP = false,
         .HAVE_WINRT = false,
         .HAVE_ACCESS = true,
-        .HAVE_ALIGNED_MALLOC = false,
+        .HAVE_ALIGNED_MALLOC = t.os.tag == .windows,
         .HAVE_ARC4RANDOM_BUF = false,
         .HAVE_CLOCK_GETTIME = true,
-        .HAVE_CLOSESOCKET = false,
-        .HAVE_COMMANDLINETOARGVW = false,
-        .HAVE_FCNTL = true,
+        .HAVE_CLOSESOCKET = t.os.tag == .windows,
+        .HAVE_COMMANDLINETOARGVW = t.os.tag == .windows,
+        .HAVE_FCNTL = t.os.tag != .windows,
         .HAVE_GETADDRINFO = true,
         .HAVE_GETAUXVAL = t.os.tag == .linux,
         .HAVE_GETENV = true,
         .HAVE_GETHRTIME = false,
         .HAVE_GETOPT = true,
-        .HAVE_GETMODULEHANDLE = false,
+        .HAVE_GETMODULEHANDLE = t.os.tag == .windows,
         .HAVE_GETPROCESSAFFINITYMASK = false,
         .HAVE_GETPROCESSMEMORYINFO = false,
         .HAVE_GETPROCESSTIMES = false,
@@ -451,24 +422,24 @@ pub fn build(b: *std.Build) void {
         .HAVE_GETSTDHANDLE = false,
         .HAVE_GETSYSTEMTIMEASFILETIME = false,
         .HAVE_GETTIMEOFDAY = true,
-        .HAVE_GLOB = true,
+        .HAVE_GLOB = t.os.tag != .windows,
         .HAVE_GLXGETPROCADDRESS = false,
         .HAVE_GMTIME_R = true,
         .HAVE_INET_ATON = true,
         .HAVE_ISATTY = true,
         .HAVE_KBHIT = false,
         .HAVE_LOCALTIME_R = true,
-        .HAVE_LSTAT = true,
+        .HAVE_LSTAT = t.os.tag != .windows,
         .HAVE_LZO1X_999_COMPRESS = false,
         .HAVE_MACH_ABSOLUTE_TIME = false,
-        .HAVE_MAPVIEWOFFILE = false,
-        .HAVE_MEMALIGN = true,
+        .HAVE_MAPVIEWOFFILE = t.os.tag == .windows,
+        .HAVE_MEMALIGN = t.os.tag != .windows,
         .HAVE_MKSTEMP = true,
-        .HAVE_MMAP = true,
+        .HAVE_MMAP = t.os.tag != .windows,
         .HAVE_MPROTECT = true,
         .HAVE_NANOSLEEP = true,
         .HAVE_PEEKNAMEDPIPE = false,
-        .HAVE_POSIX_MEMALIGN = true,
+        .HAVE_POSIX_MEMALIGN = t.os.tag != .windows,
         .HAVE_PRCTL = t.os.tag == .linux,
         .HAVE_PTHREAD_CANCEL = true,
         .HAVE_PTHREAD_SET_NAME_NP = false,
@@ -481,7 +452,7 @@ pub fn build(b: *std.Build) void {
         .HAVE_SETMODE = false,
         .HAVE_SETRLIMIT = true,
         .HAVE_SLEEP = false,
-        .HAVE_STRERROR_R = true,
+        .HAVE_STRERROR_R = t.os.tag != .windows,
         .HAVE_SYSCONF = true,
         .HAVE_SYSCTL = false,
         .HAVE_SYSCTLBYNAME = false,
@@ -816,7 +787,7 @@ pub fn build(b: *std.Build) void {
         .CONFIG_BSWAPDSP = true,
         .CONFIG_CABAC = true,
         .CONFIG_CBS = true,
-        .CONFIG_CBS_AV1 = true,
+        .CONFIG_CBS_AV1 = false,
         .CONFIG_CBS_H264 = true,
         .CONFIG_CBS_H265 = true,
         .CONFIG_CBS_H266 = true,
@@ -953,22 +924,18 @@ pub fn build(b: *std.Build) void {
     config_h.addValues(common_config);
     lib.addConfigHeader(config_h);
 
-    const config_components_h = b.addConfigHeader(.{
-        .style = .blank,
-        .include_path = "config_components.h",
-        .include_guard_override = "FFMPEG_CONFIG_COMPONENTS_H",
-    }, .{
+    const config_components_data = .{
         .CONFIG_AAC_ADTSTOASC_BSF = true,
-        .CONFIG_AV1_FRAME_MERGE_BSF = true,
-        .CONFIG_AV1_FRAME_SPLIT_BSF = true,
-        .CONFIG_AV1_METADATA_BSF = true,
+        .CONFIG_AV1_FRAME_MERGE_BSF = false,
+        .CONFIG_AV1_FRAME_SPLIT_BSF = false,
+        .CONFIG_AV1_METADATA_BSF = false,
         .CONFIG_CHOMP_BSF = true,
         .CONFIG_DUMP_EXTRADATA_BSF = true,
         .CONFIG_DCA_CORE_BSF = true,
         .CONFIG_DTS2PTS_BSF = true,
         .CONFIG_DV_ERROR_MARKER_BSF = true,
         .CONFIG_EAC3_CORE_BSF = true,
-        .CONFIG_EXTRACT_EXTRADATA_BSF = true,
+        .CONFIG_EXTRACT_EXTRADATA_BSF = false, // Disabled: requires AV1 support
         .CONFIG_FILTER_UNITS_BSF = true,
         .CONFIG_H264_METADATA_BSF = true,
         .CONFIG_H264_MP4TOANNEXB_BSF = true,
@@ -989,7 +956,7 @@ pub fn build(b: *std.Build) void {
         .CONFIG_PCM_RECHUNK_BSF = true,
         .CONFIG_PGS_FRAME_MERGE_BSF = true,
         .CONFIG_PRORES_METADATA_BSF = true,
-        .CONFIG_REMOVE_EXTRADATA_BSF = true,
+        .CONFIG_REMOVE_EXTRADATA_BSF = false, // Disabled: requires AV1 support
         .CONFIG_SETTS_BSF = true,
         .CONFIG_SHOWINFO_BSF = true,
         .CONFIG_TEXT2MOVSUB_BSF = true,
@@ -1556,7 +1523,7 @@ pub fn build(b: *std.Build) void {
         .CONFIG_XBIN_DECODER = true,
         .CONFIG_IDF_DECODER = true,
         .CONFIG_LIBAOM_AV1_DECODER = false,
-        .CONFIG_AV1_DECODER = true,
+        .CONFIG_AV1_DECODER = false,
         .CONFIG_AV1_CUVID_DECODER = false,
         .CONFIG_AV1_MEDIACODEC_DECODER = false,
         .CONFIG_AV1_QSV_DECODER = false,
@@ -1797,7 +1764,7 @@ pub fn build(b: *std.Build) void {
         .CONFIG_AC3_MF_ENCODER = false,
         .CONFIG_H263_V4L2M2M_ENCODER = t.os.tag == .linux,
         .CONFIG_AV1_MEDIACODEC_ENCODER = false,
-        .CONFIG_AV1_NVENC_ENCODER = t.os.tag == .linux or t.os.tag == .windows,
+        .CONFIG_AV1_NVENC_ENCODER = false,
         .CONFIG_AV1_QSV_ENCODER = false,
         .CONFIG_AV1_AMF_ENCODER = false,
         .CONFIG_AV1_VAAPI_ENCODER = false,
@@ -1911,7 +1878,7 @@ pub fn build(b: *std.Build) void {
         .CONFIG_AC3_PARSER = true,
         .CONFIG_ADX_PARSER = true,
         .CONFIG_AMR_PARSER = true,
-        .CONFIG_AV1_PARSER = true,
+        .CONFIG_AV1_PARSER = false,
         .CONFIG_AVS2_PARSER = true,
         .CONFIG_AVS3_PARSER = true,
         .CONFIG_BMP_PARSER = true,
@@ -2608,7 +2575,7 @@ pub fn build(b: *std.Build) void {
         .CONFIG_ASS_DEMUXER = true,
         .CONFIG_AST_DEMUXER = true,
         .CONFIG_AU_DEMUXER = true,
-        .CONFIG_AV1_DEMUXER = true,
+        .CONFIG_AV1_DEMUXER = false,
         .CONFIG_AVI_DEMUXER = true,
         .CONFIG_AVISYNTH_DEMUXER = false,
         .CONFIG_AVR_DEMUXER = true,
@@ -3151,7 +3118,7 @@ pub fn build(b: *std.Build) void {
         .CONFIG_TLS_PROTOCOL = tls != .disabled,
         .CONFIG_UDP_PROTOCOL = true,
         .CONFIG_UDPLITE_PROTOCOL = true,
-        .CONFIG_UNIX_PROTOCOL = true,
+        .CONFIG_UNIX_PROTOCOL = t.os.tag != .windows,
         .CONFIG_LIBAMQP_PROTOCOL = false,
         .CONFIG_LIBRIST_PROTOCOL = false,
         .CONFIG_LIBRTMP_PROTOCOL = false,
@@ -3165,7 +3132,13 @@ pub fn build(b: *std.Build) void {
         .CONFIG_LIBZMQ_PROTOCOL = false,
         .CONFIG_IPFS_GATEWAY_PROTOCOL = false,
         .CONFIG_IPNS_GATEWAY_PROTOCOL = false,
-    });
+    };
+
+    const config_components_h = b.addConfigHeader(.{
+        .style = .blank,
+        .include_path = "config_components.h",
+        .include_guard_override = "FFMPEG_CONFIG_COMPONENTS_H",
+    }, config_components_data);
     lib.addConfigHeader(config_components_h);
 
     const sources = categorizeSources(b.allocator, t, switch (tls) {
@@ -3211,16 +3184,14 @@ pub fn build(b: *std.Build) void {
 
                 const output_basename = basenameNewExtension(b, input_file, ".o");
                 const nasm_run = b.addRunArtifact(nasm_exe);
-
                 // nasm requires a trailing slash on include directories
                 const include_dir = b.fmt("-I{s}/", .{std.fs.path.dirname(input_file).?});
 
+                const linker = if (t.os.tag == .linux) "elf64" else "win64";
+
                 nasm_run.addArgs(&.{
                     "-f",
-                    "elf64",
-                    "-g",
-                    "-F",
-                    "dwarf",
+                    linker,
                     "-I./",
                     include_dir,
                 });
@@ -3252,6 +3223,9 @@ pub fn build(b: *std.Build) void {
         } else if (std.mem.startsWith(u8, h, "/LW/")) p: {
             if (t.os.tag != .linux and t.os.tag != .windows) continue;
             break :p h["/LW/".len..];
+        } else if (std.mem.startsWith(u8, h, "/LD/")) p: {
+            if (t.os.tag != .linux and t.os.tag != .macos) continue;
+            break :p h["/LD/".len..];
         } else h;
         lib.installHeader(b.path(path), path);
     }
@@ -3319,6 +3293,9 @@ fn categorizeSources(ally: std.mem.Allocator, target: std.Target, tls: Tls) Cate
         } else if (std.mem.startsWith(u8, prefixed_path, "/LW/")) p: {
             if (target.os.tag != .linux and target.os.tag != .windows) continue;
             break :p prefixed_path["/LW/".len..];
+        } else if (std.mem.startsWith(u8, prefixed_path, "/LD/")) p: {
+            if (target.os.tag != .linux and target.os.tag != .macos) continue;
+            break :p prefixed_path["/LD/".len..];
         } else prefixed_path;
 
         const lib = for (&libs) |*lib| {
@@ -3922,10 +3899,10 @@ const all_sources = [_][]const u8{
     //"libavcodec/audiotoolboxdec.c",
     //"libavcodec/audiotoolboxenc.c",
     "libavcodec/aura.c",
-    "libavcodec/av1_levels.c",
-    "libavcodec/av1_parse.c",
-    "libavcodec/av1_parser.c",
-    "libavcodec/av1dec.c",
+    // "libavcodec/av1_levels.c",
+    // "libavcodec/av1_parse.c",
+    // "libavcodec/av1_parser.c",
+    // "libavcodec/av1dec.c",
     "libavcodec/avcodec.c",
     "libavcodec/avdct.c",
     "libavcodec/avfft.c",
@@ -3958,9 +3935,9 @@ const all_sources = [_][]const u8{
     "libavcodec/brenderpix.c",
     "libavcodec/bsf.c",
     "libavcodec/bsf/aac_adtstoasc.c",
-    "libavcodec/bsf/av1_frame_merge.c",
-    "libavcodec/bsf/av1_frame_split.c",
-    "libavcodec/bsf/av1_metadata.c",
+    // "libavcodec/bsf/av1_frame_merge.c",
+    // "libavcodec/bsf/av1_frame_split.c",
+    // "libavcodec/bsf/av1_metadata.c",
     "libavcodec/bsf/chomp.c",
     "libavcodec/bsf/dca_core.c",
     "libavcodec/bsf/dts2pts.c",
@@ -3968,7 +3945,7 @@ const all_sources = [_][]const u8{
     "libavcodec/bsf/dv_error_marker.c",
     "libavcodec/bsf/eac3_core.c",
     "libavcodec/bsf/evc_frame_merge.c",
-    "libavcodec/bsf/extract_extradata.c",
+    // "libavcodec/bsf/extract_extradata.c", // Disabled: requires AV1 support
     "libavcodec/bsf/filter_units.c",
     "libavcodec/bsf/h264_metadata.c",
     "libavcodec/bsf/h264_mp4toannexb.c",
@@ -3990,7 +3967,7 @@ const all_sources = [_][]const u8{
     "libavcodec/bsf/pcm_rechunk.c",
     "libavcodec/bsf/pgs_frame_merge.c",
     "libavcodec/bsf/prores_metadata.c",
-    "libavcodec/bsf/remove_extradata.c",
+    // "libavcodec/bsf/remove_extradata.c", // Disabled: requires AV1 support
     "libavcodec/bsf/setts.c",
     "libavcodec/bsf/showinfo.c",
     "libavcodec/bsf/trace_headers.c",
@@ -4013,7 +3990,7 @@ const all_sources = [_][]const u8{
     "libavcodec/cbrt_data.c",
     "libavcodec/cbrt_data_fixed.c",
     "libavcodec/cbs.c",
-    "libavcodec/cbs_av1.c",
+    // "libavcodec/cbs_av1.c",
     "libavcodec/cbs_bsf.c",
     "libavcodec/cbs_h2645.c",
     "libavcodec/cbs_jpeg.c",
@@ -4053,13 +4030,13 @@ const all_sources = [_][]const u8{
     //"libavcodec/cuviddec.c",
     "libavcodec/cyuv.c",
     "/W/libavcodec/d3d11va.c",
-    "/W/libavcodec/d3d12va_av1.c",
+    // "/W/libavcodec/d3d12va_av1.c",
     "/W/libavcodec/d3d12va_decode.c",
     "/W/libavcodec/d3d12va_h264.c",
     "/W/libavcodec/d3d12va_hevc.c",
     "/W/libavcodec/d3d12va_mpeg2.c",
     "/W/libavcodec/d3d12va_vc1.c",
-    "/W/libavcodec/d3d12va_vp9.c",
+    // "/W/libavcodec/d3d12va_vp9.c",
     "libavcodec/dca.c",
     "libavcodec/dca_core.c",
     "libavcodec/dca_exss.c",
@@ -5873,7 +5850,7 @@ const all_sources = [_][]const u8{
     //"libavfilter/vidstabutils.c",
     "libavfilter/vsink_nullsink.c",
     "libavfilter/vsrc_cellauto.c",
-    "/W/libavfilter/vsrc_ddagrab.c",
+    //"/W/libavfilter/vsrc_ddagrab.c",  // Disabled - requires Windows Desktop Duplication API
     "libavfilter/vsrc_gradients.c",
     "libavfilter/vsrc_life.c",
     "libavfilter/vsrc_mandelbrot.c",
@@ -6476,7 +6453,7 @@ const all_sources = [_][]const u8{
     "libavformat/ty.c",
     "libavformat/udp.c",
     "libavformat/uncodedframecrcenc.c",
-    "libavformat/unix.c",
+    "/LD/libavformat/unix.c",
     "libavformat/url.c",
     "libavformat/urldecode.c",
     "libavformat/usmdec.c",
@@ -6607,7 +6584,7 @@ const all_sources = [_][]const u8{
     "libavutil/log2_tab.c",
     "libavutil/loongarch/cpu.c",
     "libavutil/lzo.c",
-    "libavutil/macos_kperf.c",
+    "/D/libavutil/macos_kperf.c",
     "libavutil/mastering_display_metadata.c",
     "libavutil/mathematics.c",
     "libavutil/md5.c",

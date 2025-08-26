@@ -1,15 +1,15 @@
 static const FFBitStreamFilter * const bitstream_filters[] = {
     &ff_aac_adtstoasc_bsf,
-    &ff_av1_frame_merge_bsf,
-    &ff_av1_frame_split_bsf,
-    &ff_av1_metadata_bsf,
+    // &ff_av1_frame_merge_bsf, //TODO(ro): av1
+    // &ff_av1_frame_split_bsf,
+    // &ff_av1_metadata_bsf,
     &ff_chomp_bsf,
     &ff_dump_extradata_bsf,
     &ff_dca_core_bsf,
     &ff_dts2pts_bsf,
     &ff_dv_error_marker_bsf,
     &ff_eac3_core_bsf,
-    &ff_extract_extradata_bsf,
+    // &ff_extract_extradata_bsf, //TODO(ro): av1
     &ff_filter_units_bsf,
     &ff_h264_metadata_bsf,
     &ff_h264_mp4toannexb_bsf,
@@ -30,7 +30,7 @@ static const FFBitStreamFilter * const bitstream_filters[] = {
     &ff_pcm_rechunk_bsf,
     &ff_pgs_frame_merge_bsf,
     &ff_prores_metadata_bsf,
-    &ff_remove_extradata_bsf,
+    // &ff_remove_extradata_bsf, //TODO(ro): av1
     &ff_setts_bsf,
     &ff_showinfo_bsf,
     &ff_text2movsub_bsf,
