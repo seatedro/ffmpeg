@@ -1736,7 +1736,7 @@ pub fn build(b: *std.Build) void {
         .CONFIG_LIBX262_ENCODER = false,
         .CONFIG_LIBX264_ENCODER = true,
         .CONFIG_LIBX264RGB_ENCODER = true,
-        .CONFIG_LIBX265_ENCODER = false,
+        .CONFIG_LIBX265_ENCODER = true,
         .CONFIG_LIBXEVE_ENCODER = false,
         .CONFIG_LIBXAVS_ENCODER = false,
         .CONFIG_LIBXAVS2_ENCODER = false,
