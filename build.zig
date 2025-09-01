@@ -70,25 +70,6 @@ pub fn build(b: *std.Build) void {
     lib.addIncludePath(b.path("."));
     lib.addIncludePath(b.path("compat"));
 
-    switch (t.os.tag) {
-        .macos => {
-            lib.linkFramework("CoreFoundation");
-            lib.linkFramework("CoreMedia");
-            lib.linkFramework("CoreVideo");
-            lib.linkFramework("VideoToolbox");
-        },
-        .linux => {
-            lib.linkSystemLibrary("va");
-            lib.linkSystemLibrary("cuda");
-            lib.linkSystemLibrary("cudart");
-        },
-        .windows => {
-            // nvenc uses dynamic loading on Windows, no need to link CUDA libraries
-            lib.linkSystemLibrary("ws2_32"); // Windows sockets
-        },
-        else => {},
-    }
-
     const avconfig_h = b.addConfigHeader(.{
         .style = .blank,
         .include_path = "libavutil/avconfig.h",
@@ -3231,31 +3212,31 @@ pub fn build(b: *std.Build) void {
     }
 
     const bindings = b.addModule("av", .{
-        .root_source_file = b.path("av.zig"),
+        .root_source_file = b.path("ffmpeg.zig"),
         .target = target,
         .optimize = optimize,
     });
     bindings.linkLibrary(lib);
 
-    const show_metadata_c = b.addExecutable(.{
-        .name = "show_metadata_c",
-        .target = target,
-        .optimize = optimize,
-    });
-    show_metadata_c.addCSourceFiles(.{
-        .files = &.{"doc/examples/show_metadata.c"},
-    });
-    show_metadata_c.linkLibrary(lib);
-    b.installArtifact(show_metadata_c);
-
-    const show_metadata_zig = b.addExecutable(.{
-        .name = "show_metadata_zig",
-        .root_source_file = b.path("doc/examples/show_metadata.zig"),
-        .target = target,
-        .optimize = optimize,
-    });
-    show_metadata_zig.root_module.addImport("av", bindings);
-    b.installArtifact(show_metadata_zig);
+    // const show_metadata_c = b.addExecutable(.{
+    //     .name = "show_metadata_c",
+    //     .target = target,
+    //     .optimize = optimize,
+    // });
+    // show_metadata_c.addCSourceFiles(.{
+    //     .files = &.{"doc/examples/show_metadata.c"},
+    // });
+    // show_metadata_c.linkLibrary(lib);
+    // b.installArtifact(show_metadata_c);
+    //
+    // const show_metadata_zig = b.addExecutable(.{
+    //     .name = "show_metadata_zig",
+    //     .root_source_file = b.path("doc/examples/show_metadata.zig"),
+    //     .target = target,
+    //     .optimize = optimize,
+    // });
+    // show_metadata_zig.root_module.addImport("av", bindings);
+    // b.installArtifact(show_metadata_zig);
 }
 
 const Tls = enum { disabled, gnutls, libtls, mbedtls, openssl, libressl, schannel, securetransport };
