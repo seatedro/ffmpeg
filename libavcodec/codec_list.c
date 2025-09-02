@@ -720,4 +720,31 @@ static const FFCodec * const codec_list[] = {
     // &ff_av1_decoder, //TODO(ro): av1
     &ff_vnull_decoder,
     &ff_anull_decoder,
+    &ff_libx264_encoder,
+    &ff_libx264rgb_encoder,
+    &ff_libx265_encoder,
+#if CONFIG_H264_NVENC_ENCODER
+    &ff_h264_nvenc_encoder,
+#endif
+#if CONFIG_H264_VAAPI_ENCODER
+    &ff_h264_vaapi_encoder,
+#endif
+#if CONFIG_HEVC_NVENC_ENCODER
+    &ff_hevc_nvenc_encoder,
+#endif
+#if CONFIG_HEVC_VAAPI_ENCODER
+    &ff_hevc_vaapi_encoder,
+#endif
+#if CONFIG_MJPEG_VAAPI_ENCODER
+    &ff_mjpeg_vaapi_encoder,
+#endif
+#if CONFIG_MPEG2_VAAPI_ENCODER
+    &ff_mpeg2_vaapi_encoder,
+#endif
+#if CONFIG_VP8_VAAPI_ENCODER
+    &ff_vp8_vaapi_encoder,
+#endif
+#if CONFIG_VP9_VAAPI_ENCODER
+    &ff_vp9_vaapi_encoder,
+#endif
     NULL };

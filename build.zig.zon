@@ -45,12 +45,12 @@
             .hash = "nasm-2.16.1-4-J30EdwGwXACgImX62KZXKQjImmWQkoxURNgnvUEivYWy",
         },
         .libx264 = .{
-            .url = "git+https://github.com/seatedro/x264#29e8470d405668c451a48a7cc7dddf2fa48404f8",
-            .hash = "x264-0.165.0-lJ1Er1_fVAAjTuLlZt21VlPjslhn68u3j7aIwO3kZaIK",
+            .url = "git+https://github.com/seatedro/x264#66aef9c57dbc7de27834af2d6b9e7479bddaa240",
+            .hash = "x264-0.165.0-lJ1Er77fVABggLZLKC8e3MHrXcMYdtNctQfvm3yAN9Td",
         },
         .libx265 = .{
-            .url = "git+https://github.com/seatedro/x265#6db1b63e0de3bc50d56a71908c457135effeeb04",
-            .hash = "x265-4.1.0-rbJQJJzh1QB2jwWGUFpSAjqrALj-wDciA4HQgv913MGo",
+            .url = "git+https://github.com/seatedro/x265#6eea4bb995dab10b31e9bd4d754326b1272aa32f",
+            .hash = "x265-4.1.0-rbJQJPfh1QC5_AJY3WQQABGFfi_HBijeMWjjVQzjiwWv",
         },
         .@"nv-codec-headers" = .{
             .url = "git+https://github.com/seatedro/nv-codec-headers#b24ba97a1009aabb851ee938a74cd87128fa50c9",
